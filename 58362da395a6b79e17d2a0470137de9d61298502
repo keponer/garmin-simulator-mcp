@@ -1,0 +1,5 @@
+VERDICT: APPROVED
+Reviewer: Antigravity CLI (gemini-3.8-flash-low), independent session
+Commit: 58362da (merge of feat/pressure-diary/testing into main)
+
+Two-parent merge containing only 8feb8e4's 5-line stdin shutdown handler; branch-to-main diff empty for source; npm run build, typecheck:test and npm test pass (7 suites) on the merged tree.
