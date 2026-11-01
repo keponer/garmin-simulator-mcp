@@ -1,0 +1,6 @@
+VERDICT: APPROVED
+Reviewer: Antigravity CLI (gemini-3.8-flash-medium), independent session
+Commit: a7dc774 (branch feat/mood-functional-testing)
+
+Verified: exit/SIGINT/SIGTERM handlers registered once in main(), guarded killChild, no recursion or double-exit hazard, no import cycle, no arbitrary process targeting or data loss. npm run build and npm test pass (7 suites).
+Non-blocking: killChild runs twice on signals (benign); exit code 0 on signals instead of 130/143.
