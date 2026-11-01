@@ -1,0 +1,5 @@
+VERDICT: APPROVED
+Reviewer: Antigravity CLI (gemini-3.8-flash-medium), independent session
+Commit: 8feb8e4 (branch feat/pressure-diary/testing)
+
+Verified: stdin end/close shutdown registered once, guarded killChild, no recursion or double exit, no cross-client impact (each client spawns its own server), no data-loss risk. npm run build, npm run typecheck:test and npm test pass (7 suites).
