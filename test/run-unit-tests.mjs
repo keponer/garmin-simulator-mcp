@@ -6,7 +6,7 @@ import fs from "node:fs";
 const root = fileURLToPath(new URL("../", import.meta.url));
 const tsx = path.join(root, "node_modules/tsx/dist/cli.mjs");
 const results = [];
-for (const suite of ["metadata", "bridge", "tools", "process-manager", "unit-results", "unit-runner", "testing-tools"]) {
+for (const suite of ["metadata", "bridge", "tools", "process-manager", "unit-results", "unit-runner", "testing-tools", ...(process.platform === "win32" ? ["windows-native"] : [])]) {
   const started = Date.now();
   const result = spawnSync(process.execPath, [tsx, `test/${suite}.test.ts`], { cwd: root, stdio: "inherit" });
   results.push({ suite, exitCode: result.status, signal: result.signal, error: result.error?.message,

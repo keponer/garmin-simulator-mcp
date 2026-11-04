@@ -23,6 +23,10 @@ import type { DeviceKeyMapping, DeviceProfile, Point } from "../types.js";
  */
 export function getVirtualKeyCodeForButton(keyId: string): number | undefined {
   const lower = keyId.toLowerCase().trim();
+  if (process.platform === "win32") {
+    const keys: Record<string, number> = { enter: 13, return: 13, select: 13, start: 13, ok: 13, onselect: 13, esc: 27, escape: 27, back: 27, lap: 27, onback: 27, up: 38, prev: 38, previous: 38, previouspage: 38, down: 40, next: 40, nextpage: 40, left: 37, right: 39, menu: 77, onmenu: 77, space: 32 };
+    return keys[lower] ?? (/^\d+$/.test(lower) ? Number(lower) : undefined);
+  }
   switch (lower) {
     case "enter":
     case "return":
@@ -116,7 +120,8 @@ async function performButtonPress(options: {
     // Fall back to mouse click if keycode is not mapped
   }
 
-  // Mouse method: click exact bezel hitbox center
+  // Focus can restore a minimized window, so read geometry afterwards.
+  await raiseSimulatorWindow();
   const windowInfo = await getWindowInfo();
   if (!windowInfo.running || !windowInfo.bounds) {
     throw new Error(
@@ -124,14 +129,10 @@ async function performButtonPress(options: {
     );
   }
 
-  // Make the watch window the click target; app activation alone can be refused
-  // while another application owns focus or a modal.
-  await raiseSimulatorWindow();
-
   const screenPt = bezelPointToScreenPoint(
     keyMapping.center,
     windowInfo.bounds,
-    profile
+    profile, windowInfo.scale ? windowInfo.contentOffset : undefined, windowInfo.scale
   );
 
   await clickScreenPoint(screenPt.x, screenPt.y, holdDuration);
@@ -309,18 +310,17 @@ export async function handleTapScreen(args: {
       ? Math.round(args.y * profile.display.location.height)
       : Math.round(args.y);
 
+    await raiseSimulatorWindow();
     const windowInfo = await getWindowInfo();
     if (!windowInfo.running || !windowInfo.bounds) {
       throw new Error(
         "Connect IQ simulator window is not running or not visible. Launch it first using launch_simulator."
       );
     }
-    await raiseSimulatorWindow();
-
     const screenPt = watchPointToScreenPoint(
       { x: watchX, y: watchY },
       windowInfo.bounds,
-      profile
+      profile, windowInfo.scale ? windowInfo.contentOffset : undefined, windowInfo.scale
     );
 
     await clickScreenPoint(screenPt.x, screenPt.y, 80);
@@ -382,23 +382,22 @@ export async function handleSwipeScreen(args: {
       args.direction
     );
 
+    await raiseSimulatorWindow();
     const windowInfo = await getWindowInfo();
     if (!windowInfo.running || !windowInfo.bounds) {
       throw new Error(
         "Connect IQ simulator window is not running or not visible. Launch it first using launch_simulator."
       );
     }
-    await raiseSimulatorWindow();
-
     const startScreen = watchPointToScreenPoint(
       startWatch,
       windowInfo.bounds,
-      profile
+      profile, windowInfo.scale ? windowInfo.contentOffset : undefined, windowInfo.scale
     );
     const endScreen = watchPointToScreenPoint(
       endWatch,
       windowInfo.bounds,
-      profile
+      profile, windowInfo.scale ? windowInfo.contentOffset : undefined, windowInfo.scale
     );
 
     await dragScreenPoints(
@@ -470,18 +469,17 @@ export async function handleHoldScreen(args: {
       ? Math.round(args.y * profile.display.location.height)
       : Math.round(args.y);
 
+    await raiseSimulatorWindow();
     const windowInfo = await getWindowInfo();
     if (!windowInfo.running || !windowInfo.bounds) {
       throw new Error(
         "Connect IQ simulator window is not running or not visible. Launch it first using launch_simulator."
       );
     }
-    await raiseSimulatorWindow();
-
     const screenPt = watchPointToScreenPoint(
       { x: watchX, y: watchY },
       windowInfo.bounds,
-      profile
+      profile, windowInfo.scale ? windowInfo.contentOffset : undefined, windowInfo.scale
     );
 
     const duration = args.duration_ms ?? 1000;

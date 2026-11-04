@@ -1,7 +1,7 @@
 {
   "name": "garmin-emulator-mcp",
   "version": "0.1.0",
-  "description": "MCP server for automating and inspecting the Garmin Connect IQ Simulator on macOS",
+  "description": "MCP server for automating and inspecting the Garmin Connect IQ Simulator on macOS and Windows",
   "type": "module",
   "main": "dist/index.js",
   "bin": {
@@ -10,7 +10,7 @@
   "scripts": {
     "build:swift": "mkdir -p bin && swiftc -O src/native/macos-bridge.swift -o bin/macos-bridge",
     "build:ts": "tsc",
-    "build": "npm run build:swift && npm run build:ts",
+    "build": "node -e \"if(process.platform==='darwin'){require('child_process').execSync('npm run build:swift',{stdio:'inherit'})}\" && npm run build:ts",
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "test": "node test/run-unit-tests.mjs",

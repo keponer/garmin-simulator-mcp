@@ -5,7 +5,11 @@
 [![Model Context Protocol](https://img.shields.io/badge/MCP-1.0.4-green.svg)](https://modelcontextprotocol.io)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue.svg)](https://www.typescriptlang.org)
 
-A Model Context Protocol (MCP) server providing 100% deterministic automation, input synthesis, and visual inspection for the Garmin Connect IQ Simulator (`ConnectIQ.app`) on macOS.
+A Model Context Protocol (MCP) server for automating and inspecting the Garmin Connect IQ Simulator on macOS and Windows.
+
+Windows support uses PowerShell and Windows UI Automation. Screenshot capture uses `PrintWindow`; a minimized simulator may not render correctly. Windows OCR requires an installed OCR language pack and does not return confidence scores. Windows UI Automation exposes different elements from macOS Accessibility. The window must be in the interactive desktop for input. Windows key codes are Windows virtual key codes.
+
+Before input, the bridge waits for foreground activation and verifies the simulator still owns focus. If Windows refuses activation or another window takes focus before input begins, the command fails without sending input; bring the simulator's main window to the foreground and retry.
 
 Enables AI coding agents (Antigravity, Claude Code, Cursor) to build, run, test, tap, swipe, press hardware buttons, stream logs, and visually inspect Garmin watchfaces, data fields, and device apps.
 
@@ -121,7 +125,7 @@ Run `simulator_status` at any time to verify permission status.
 
 ### 1. Build from Source
 
-Ensure Xcode Command Line Tools (`swiftc`) and Node.js $\ge 18$ are installed:
+Install Node.js $\ge 18$, Java, and the Garmin Connect IQ SDK. On macOS, also install Xcode Command Line Tools (`swiftc`). On Windows, Windows PowerShell 5.1 is required.
 
 ```bash
 git clone https://github.com/keponer/garmin-simulator-mcp.git
@@ -131,8 +135,10 @@ npm run build
 ```
 
 This compiles:
-- `bin/macos-bridge` (native Swift CLI helper)
+- `bin/macos-bridge` on macOS (native Swift CLI helper)
 - `dist/index.js` (TypeScript MCP server)
+
+On Windows, the SDK is discovered in `%APPDATA%\Garmin\ConnectIQ` by default. Set `GARMIN_CONNECTIQ_ROOT` to override the SDK Manager data directory. Keep `src/native/windows-bridge.ps1` alongside the built server.
 
 Run all tests:
 ```bash

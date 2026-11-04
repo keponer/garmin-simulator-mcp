@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import { fileURLToPath } from "node:url";
+import { locateGarminSdk } from "../config/sdk-locator.js";
 import type { Point, Rect, WindowInfoResponse } from "../types.js";
 
 const execFileAsync = promisify(execFile);
@@ -31,6 +32,13 @@ export function getBridgeBinaryPath(): string {
  * Runs a subcommand on the native Swift macos-bridge CLI.
  */
 export async function runBridgeCommand(args: string[]): Promise<any> {
+  if (process.platform === "win32") {
+    const script = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../../src/native/windows-bridge.ps1");
+    const encoded = Buffer.from(JSON.stringify(args)).toString("base64");
+    const simulatorPath = args[0] === "ocr" ? "" : fs.realpathSync(locateGarminSdk().simulatorAppPath);
+    const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script, encoded, simulatorPath], { maxBuffer: 10 * 1024 * 1024 });
+    return JSON.parse(stdout.trim());
+  }
   const binary = getBridgeBinaryPath();
   if (!fs.existsSync(binary)) {
     throw new Error(
@@ -170,6 +178,7 @@ export async function dragScreenPoints(
  * Synthesizes a keyboard key press by virtual key code.
  */
 export async function sendKeyCode(keyCode: number, holdMs?: number): Promise<void> {
+  if (process.platform === "win32") await raiseSimulatorWindow();
   const args = ["key", "--code", String(keyCode)];
   if (typeof holdMs === "number") {
     args.push("--hold-ms", String(holdMs));
@@ -192,13 +201,18 @@ export async function triggerMenu(
 /**
  * Captures raw window PNG buffer for a given CGWindowID using macOS /usr/sbin/screencapture.
  */
-export async function captureRawWindowPng(windowId: number): Promise<Buffer> {
+export async function captureRawWindowPng(windowId: number, windowScale = 1): Promise<Buffer> {
   const tmpFile = path.join(
     os.tmpdir(),
     `garmin-capture-${windowId}-${Date.now()}-${Math.random().toString(36).slice(2)}.png`
   );
 
   try {
+    if (process.platform === "win32") {
+      const result = await runBridgeCommand(["capture", String(windowId), tmpFile, String(windowScale)]);
+      if (!result.ok) throw new Error(result.error);
+      return await fs.promises.readFile(tmpFile);
+    }
     await execFileAsync("/usr/sbin/screencapture", [
       "-l",
       String(windowId),

@@ -2,6 +2,8 @@
 
 `npm test` runs metadata, bridge/image, tool, process-manager, result-parser and unit-runner regression suites serially. The bridge/image suite uses synthetic images, not a live screenshot. Some suites inspect the installed SDK/window status; these are not app functional tests or cross-device app executions.
 
+On Windows it also opens temporary native test windows to check executable matching, ambiguous processes, maximized/minimized geometry, foreground input guarding, native button activation, and storage-editor closure. These fixtures do not operate the installed Garmin simulator or its app data.
+
 `npm run test:e2e` retains the existing live client verification. It can press a button on the active app when Screen Recording is enabled; run it only in an isolated simulator session. Its conditional skip of live captures must not be described as a successful live capture.
 
 `npm run build:ts` rebuilds the server. Existing connected clients keep their loaded code until restarted. Use a fresh stdio client when validating a local change.

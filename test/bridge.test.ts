@@ -231,6 +231,18 @@ async function runTests() {
   assert.strictEqual(bezelDecoded.height, 694);
   console.log("  ✓ view: 'bezel' output 639x694 PNG");
 
+  // A resized Windows window adds empty space; it does not scale the device.
+  for (const [width, scale] of [[650, 1], [1000, 1.25], [1000, 1.5]]) {
+    const raw = await sharp({ create: { width, height: 760, channels: 3, background: '#000000' } })
+      .composite([{ input: await sharp({ create: { width: 639, height: 694, channels: 3, background: '#ff0000' } }).png().toBuffer(), left: 8, top: 40 }])
+      .png().toBuffer();
+    const result = await processSimulatorScreenshot({ rawWindowPng: raw,
+      windowBounds: { x: 0, y: 0, width: width * scale, height: 760 * scale },
+      contentOffset: { x: 8 * scale, y: 40 * scale }, windowScale: scale, profile: mockProfile, view: 'bezel' });
+    const pixel = await sharp(Buffer.from(result.base64Png, 'base64')).extract({ left: 400, top: 300, width: 1, height: 1 }).removeAlpha().raw().toBuffer();
+    assert.deepEqual([...pixel], [255, 0, 0], `device crop must remain fixed at window width ${width}, scale ${scale}`);
+  }
+
   // Test 3c: View "annotated"
   console.log("  Testing view: 'annotated'...");
   const tmpSavePath = path.join(os.tmpdir(), `garmin-test-annotated-${Date.now()}.png`);
@@ -271,6 +283,20 @@ async function runTests() {
   assert.ok(svg.includes("[HOLD]"), "SVG must indicate [HOLD] keys");
   assert.ok(svg.includes("stroke-dasharray=\"6,4\""), "SVG must include dashed screen border");
   console.log("✓ Test 4 passed: SVG annotation contains all required labels and elements.");
+
+  if (process.platform === "win32") {
+    const ocrFile = path.join(os.tmpdir(), `garmin-ocr-${process.pid}.png`);
+    try {
+      await sharp(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg" width="800" height="150"><rect width="800" height="150" fill="white"/><text x="20" y="100" font-size="72">HELLO GARMIN</text></svg>')).png().toFile(ocrFile);
+      const ocr = await runBridgeCommand(["ocr", ocrFile]);
+      if (!ocr.ok && /language pack.*unavailable/i.test(ocr.error)) console.log("Windows OCR test skipped: no OCR language pack installed.");
+      else {
+        assert.equal(ocr.ok, true, ocr.error);
+        assert.match(ocr.lines.map((line: { text: string }) => line.text).join(" "), /HELLO GARMIN/i);
+        assert.ok(ocr.lines[0].bounds.width > 0 && ocr.lines[0].bounds.width <= 1);
+      }
+    } finally { fs.rmSync(ocrFile, { force: true }); }
+  }
 
   console.log("\n========================================================");
   console.log("All Garmin Emulator Bridge & Image Tests PASSED successfully!");

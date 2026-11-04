@@ -3,24 +3,28 @@ import path from "node:path";
 import os from "node:os";
 import type { GarminSdkPaths, SimulatorIniState } from "../types.js";
 
+function connectIqRoot(): string {
+  return process.env.GARMIN_CONNECTIQ_ROOT || (process.platform === "win32"
+    ? path.join(process.env.APPDATA || path.join(os.homedir(), "AppData", "Roaming"), "Garmin", "ConnectIQ")
+    : path.join(os.homedir(), "Library/Application Support/Garmin/ConnectIQ"));
+}
+
 /**
  * Resolves the ConnectIQ SDK root directory and tool paths.
- * Checks GARMIN_CONNECTIQ_ROOT or ~/Library/Application Support/Garmin/ConnectIQ,
+ * Checks GARMIN_CONNECTIQ_ROOT or the platform's Garmin ConnectIQ data directory,
  * reads current-sdk.cfg, and falls back to the latest directory in Sdks/.
  */
 export function locateGarminSdk(): GarminSdkPaths {
-  const connectIqRoot =
-    process.env.GARMIN_CONNECTIQ_ROOT ||
-    path.join(os.homedir(), "Library/Application Support/Garmin/ConnectIQ");
+  const root = connectIqRoot();
 
-  if (!fs.existsSync(connectIqRoot)) {
+  if (!fs.existsSync(root)) {
     throw new Error(
-      `Garmin ConnectIQ root not found at "${connectIqRoot}". Ensure the Garmin Connect IQ SDK Manager is installed or set GARMIN_CONNECTIQ_ROOT.`
+      `Garmin ConnectIQ root not found at "${root}". Ensure the Garmin Connect IQ SDK Manager is installed or set GARMIN_CONNECTIQ_ROOT.`
     );
   }
 
   let sdkPath: string | undefined;
-  const cfgPath = path.join(connectIqRoot, "current-sdk.cfg");
+  const cfgPath = path.join(root, "current-sdk.cfg");
 
   if (fs.existsSync(cfgPath)) {
     const rawCfg = fs.readFileSync(cfgPath, "utf-8").trim();
@@ -31,7 +35,7 @@ export function locateGarminSdk(): GarminSdkPaths {
 
   if (!sdkPath) {
     // Fallback to the latest folder inside Sdks/
-    const sdksDir = path.join(connectIqRoot, "Sdks");
+    const sdksDir = path.join(root, "Sdks");
     if (fs.existsSync(sdksDir)) {
       const candidates = fs
         .readdirSync(sdksDir)
@@ -53,22 +57,22 @@ export function locateGarminSdk(): GarminSdkPaths {
 
   if (!sdkPath) {
     throw new Error(
-      `Garmin ConnectIQ SDK could not be located in "${connectIqRoot}". Missing current-sdk.cfg or Sdks/ entries.`
+      `Garmin ConnectIQ SDK could not be located in "${root}". Missing current-sdk.cfg or Sdks/ entries.`
     );
   }
 
   const binDir = path.join(sdkPath, "bin");
 
   return {
-    connectIqRoot,
+    connectIqRoot: root,
     sdkPath,
     binDir,
-    devicesDir: path.join(connectIqRoot, "Devices"),
-    simulatorIniPath: path.join(connectIqRoot, "simulator.ini"),
-    simulatorAppPath: path.join(binDir, "ConnectIQ.app"),
-    monkeycPath: path.join(binDir, "monkeyc"),
-    monkeydoPath: path.join(binDir, "monkeydo"),
-    shellPath: path.join(binDir, "shell"),
+    devicesDir: path.join(root, "Devices"),
+    simulatorIniPath: path.join(root, "simulator.ini"),
+    simulatorAppPath: path.join(binDir, process.platform === "win32" ? "simulator.exe" : "ConnectIQ.app"),
+    monkeycPath: path.join(binDir, process.platform === "win32" ? "monkeyc.bat" : "monkeyc"),
+    monkeydoPath: path.join(binDir, process.platform === "win32" ? "monkeydo.bat" : "monkeydo"),
+    shellPath: path.join(binDir, process.platform === "win32" ? "shell.exe" : "shell"),
   };
 }
 
@@ -79,8 +83,7 @@ export function readSimulatorIni(simulatorIniPath?: string): SimulatorIniState {
   const targetIniPath =
     simulatorIniPath ??
     path.join(
-      process.env.GARMIN_CONNECTIQ_ROOT ||
-        path.join(os.homedir(), "Library/Application Support/Garmin/ConnectIQ"),
+      connectIqRoot(),
       "simulator.ini"
     );
 

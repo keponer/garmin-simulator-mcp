@@ -67,8 +67,13 @@ export function resolveActiveDeviceProfile(
 export function bezelPointToScreenPoint(
   bezelPt: Point,
   windowBounds: Rect,
-  profile: DeviceProfile
+  profile: DeviceProfile,
+  contentOffset?: Point,
+  scale = 1
 ): Point {
+  if (contentOffset) {
+    return { x: Math.round(windowBounds.x + contentOffset.x + bezelPt.x * scale), y: Math.round(windowBounds.y + contentOffset.y + bezelPt.y * scale) };
+  }
   const canvasOrigin = computeCanvasOrigin(
     windowBounds,
     profile.bezelDimensions
@@ -86,7 +91,9 @@ export function bezelPointToScreenPoint(
 export function watchPointToScreenPoint(
   watchPt: Point,
   windowBounds: Rect,
-  profile: DeviceProfile
+  profile: DeviceProfile,
+  contentOffset?: Point,
+  scale = 1
 ): Point {
   return bezelPointToScreenPoint(
     {
@@ -94,7 +101,9 @@ export function watchPointToScreenPoint(
       y: profile.display.location.y + watchPt.y,
     },
     windowBounds,
-    profile
+    profile,
+    contentOffset,
+    scale
   );
 }
 
@@ -124,11 +133,13 @@ export async function captureAndFormatScreenshot(options?: {
   }
 
   const profile = resolveActiveDeviceProfile(options?.deviceId);
-  const rawWindowPng = await captureRawWindowPng(windowInfo.windowId);
+  const rawWindowPng = await captureRawWindowPng(windowInfo.windowId, windowInfo.scale);
 
   const screenshot = await processSimulatorScreenshot({
     rawWindowPng,
     windowBounds: windowInfo.bounds,
+    contentOffset: windowInfo.contentOffset,
+    windowScale: windowInfo.scale,
     profile,
     view: options?.view ?? "screen",
     savePath: options?.savePath,

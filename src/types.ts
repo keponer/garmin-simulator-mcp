@@ -75,6 +75,7 @@ export interface WindowInfoResponse {
   windowId?: number;
   bounds?: Rect;
   contentOffset?: Point;
+  scale?: number;
   permissions: {
     screenRecording: boolean;
     accessibility: boolean;

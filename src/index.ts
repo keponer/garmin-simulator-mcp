@@ -278,7 +278,7 @@ export function createServer(): McpServer {
 
   server.tool(
     "send_key",
-    "Send a macOS virtual key code or named key ('enter', 'esc', 'up', 'down', 'menu', 'space') to the Connect IQ simulator window.",
+    "Send a platform virtual key code or named key ('enter', 'esc', 'up', 'down', 'menu', 'space') to the Connect IQ simulator window.",
     {
       key: z
         .string()
@@ -290,7 +290,7 @@ export function createServer(): McpServer {
         .number()
         .optional()
         .describe(
-          "macOS virtual keycode (e.g. 36 for Return, 53 for Escape, 126 for Up Arrow, 125 for Down Arrow)"
+          "Platform virtual key code (Windows and macOS use different codes)"
         ),
       hold_ms: z
         .number()
@@ -541,7 +541,7 @@ export function createServer(): McpServer {
   server.tool("terminate_simulator", "Terminate only ConnectIQ.app; force is for an unresponsive simulator. Does not delete stored data. Relaunch separately after confirming stopped status.",
     { force: z.boolean().default(false) },
     async ({ force }) => testingResult(() => runBridgeCommand(["terminate", ...(force ? ["--force"] : [])])));
-  server.tool("recognize_image_text", "Recognize text in a saved simulator PNG with on-device macOS Vision. Returns text/confidence/normalized bounds; OCR is evidence, not a replacement for storage assertions.",
+  server.tool("recognize_image_text", "Recognize text in a saved simulator PNG using on-device OCR. Returns text and normalized bounds; confidence is available on macOS. OCR is evidence, not a replacement for storage assertions.",
     { image_path: z.string() },
     async ({ image_path }) => testingResult(() => runBridgeCommand(["ocr", image_path])));
   server.tool("close_storage_editor", "Close the simulator's persistent-storage editor and verify the window is gone. Safe when already closed.",

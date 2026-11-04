@@ -123,6 +123,8 @@ export function generateAnnotationOverlay(
 export async function processSimulatorScreenshot(params: {
   rawWindowPng: Buffer;
   windowBounds: Rect;
+  contentOffset?: { x: number; y: number };
+  windowScale?: number;
   profile: DeviceProfile;
   view: ScreenshotViewMode;
   savePath?: string;
@@ -138,7 +140,7 @@ export async function processSimulatorScreenshot(params: {
   const scaleY = imgH / (windowBounds.height || 1);
 
   // 2. Compute canvas origin and 1x bezel dimensions
-  const canvasOrigin = computeCanvasOrigin(windowBounds, profile.bezelDimensions);
+  const canvasOrigin = params.windowScale && params.contentOffset ? params.contentOffset : computeCanvasOrigin(windowBounds, profile.bezelDimensions);
   const bezelW = profile.bezelDimensions?.width ?? windowBounds.width;
   const bezelH =
     profile.bezelDimensions?.height ??
@@ -147,8 +149,9 @@ export async function processSimulatorScreenshot(params: {
   // 3. Extract bezel region in raw pixel coordinates
   let rawLeft = Math.round(canvasOrigin.x * scaleX);
   let rawTop = Math.round(canvasOrigin.y * scaleY);
-  let rawWidth = Math.round(bezelW * scaleX);
-  let rawHeight = Math.round(bezelH * scaleY);
+  const deviceScale = params.windowScale && params.contentOffset ? params.windowScale : 1;
+  let rawWidth = Math.round(bezelW * scaleX * deviceScale);
+  let rawHeight = Math.round(bezelH * scaleY * deviceScale);
 
   // Clamp within raw image boundaries
   rawLeft = Math.max(0, Math.min(rawLeft, imgW - 1));

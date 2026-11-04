@@ -52,6 +52,8 @@ async function runToolsTests() {
   // screenPt.x = 100 + 0 + 50 = 150
   // screenPt.y = 100 + 28 + 50 = 178
   assert.deepStrictEqual(screenPt, { x: 150, y: 178 });
+  assert.deepStrictEqual(bezelPointToScreenPoint(bezelPt, { x: 100, y: 100, width: 912, height: 1200 }, fenixProfile, { x: 10, y: 64 }, 1.25), { x: 173, y: 227 });
+  assert.deepStrictEqual(bezelPointToScreenPoint(bezelPt, { x: 100, y: 100, width: 1500, height: 1500 }, fenixProfile, { x: 10, y: 64 }, 1.25), { x: 173, y: 227 });
 
   // Watch point: fenix847mm display.location is (134, 221)
   const watchPt = { x: 10, y: 20 };

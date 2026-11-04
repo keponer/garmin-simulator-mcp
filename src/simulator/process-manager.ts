@@ -6,6 +6,15 @@ import { spawn, execFile, ChildProcess } from "node:child_process";
 import type { GarminSdkPaths } from "../types.js";
 import { parseUnitTestOutput, type UnitTestSummary } from "./unit-results.js";
 
+function spawnSdkTool(tool: string, args: string[], options?: { cwd?: string }): ChildProcess {
+  if (process.platform !== "win32" || !/monkey(c|do)\.bat$/i.test(tool)) return spawn(tool, args, options);
+  const bin = path.dirname(tool);
+  const jar = path.join(bin, "monkeybrains.jar");
+  if (/monkeyc\.bat$/i.test(tool)) return spawn("java", ["-Xms1g", "-Dfile.encoding=UTF-8", "-cp", jar, "com.garmin.monkeybrains.Monkeybrains", ...args], options);
+  const [prg, device, ...rest] = args;
+  return spawn("java", ["-classpath", jar, "com.garmin.monkeybrains.monkeydodeux.MonkeyDoDeux", "-f", prg, "-d", device, "-s", path.join(bin, "shell.exe"), ...rest], options);
+}
+
 export interface BuildProjectOptions {
   projectDir: string;
   deviceId: string;
@@ -186,6 +195,11 @@ export class SimulatorProcessManager {
     this.appendLog("system", `Launching ConnectIQ simulator from ${sdkPaths.simulatorAppPath}...`);
 
     try {
+      if (process.platform === "win32") {
+        const child = spawn(sdkPaths.simulatorAppPath, [], { detached: true, stdio: "ignore" });
+        await new Promise<void>((resolve, reject) => { child.once("spawn", resolve); child.once("error", reject); });
+        child.unref();
+      } else {
       await new Promise<void>((resolve, reject) => {
         execFile("open", ["-a", sdkPaths.simulatorAppPath], (err) => {
           if (err) {
@@ -196,6 +210,7 @@ export class SimulatorProcessManager {
           }
         });
       });
+      }
     } catch (err: any) {
       this.appendLog("stderr", `Could not launch simulator application: ${err?.message || err}`);
       return { started: false, portOpen: false };
@@ -364,7 +379,7 @@ export class SimulatorProcessManager {
     this.appendLog("system", `Compiling project: ${sdkPaths.monkeycPath} ${args.join(" ")}`);
 
     return new Promise<BuildResult>((resolve) => {
-      const child = spawn(sdkPaths.monkeycPath, args, {
+      const child = spawnSdkTool(sdkPaths.monkeycPath, args, {
         cwd: options.projectDir,
       });
 
@@ -471,7 +486,7 @@ export class SimulatorProcessManager {
       const fatalRegex = /Unable to connect to simulator|Unable to launch|not properly signed|Encountered an app crash|Unable to find given PRG|Invalid PRG file|MonkeyDoDeuxException|Unhandled Exception/i;
       let fatal: string | undefined;
 
-      const child = spawn(sdkPaths.monkeydoPath, args);
+      const child = spawnSdkTool(sdkPaths.monkeydoPath, args);
       this.activeProcess = child;
 
       const finish = (launched: boolean, startupConfirmed = false) => {
@@ -642,7 +657,7 @@ export class SimulatorProcessManager {
       const stdoutChunks: Buffer[] = [];
       const stderrChunks: Buffer[] = [];
 
-      const child = spawn(sdkPaths.monkeydoPath, args);
+      const child = spawnSdkTool(sdkPaths.monkeydoPath, args);
 
       const finish = (result: RunUnitTestsResult) => {
         if (!settled) {

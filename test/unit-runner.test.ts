@@ -7,13 +7,15 @@ import type { GarminSdkPaths } from "../src/types.js";
 
 // No real simulator or app state is touched by these process-lifecycle regressions.
 const root = await fs.mkdtemp(path.join(os.tmpdir(), "garmin-unit-runner-"));
-const executable = path.join(root, "fake-monkeydo");
+const fixture = path.join(root, "fake-monkeydo.js");
+const executable = process.platform === "win32" ? process.execPath : path.join(root, "fake-monkeydo");
 const sdk = { monkeydoPath: executable } as GarminSdkPaths;
 const good = "RESULTS\nexample PASS\nRan 1 test\nPASSED (failures=0, errors=0)\n";
 
 async function fake(body: string): Promise<void> {
-  await fs.writeFile(executable, `#!${process.execPath}\n${body}\n`);
-  await fs.chmod(executable, 0o700);
+  const target = process.platform === "win32" ? fixture : executable;
+  await fs.writeFile(target, `#!${process.execPath}\n${body}\n`);
+  await fs.chmod(target, 0o700);
 }
 
 try {
@@ -30,9 +32,10 @@ try {
     ["timeout", `console.error('timeout diagnostic'); setInterval(()=>{},1000);`, false],
   ];
   for (const [mode, body, expected] of suites) {
+    if (mode === "signal" && process.platform === "win32") continue;
     await fake(body);
     const result = await manager.runUnitTests(sdk, {
-      prgPath: mode, deviceId: "fenix847mm", timeoutMs: mode === "timeout" ? 2500 : 8000,
+      prgPath: process.platform === "win32" ? fixture : mode, deviceId: "fenix847mm", timeoutMs: mode === "timeout" ? 2500 : 8000,
     });
     assert.equal(result.passed, expected, mode);
     if (mode === "exit1") assert.match(result.exitCodeWarning ?? "", /exited 1 despite a complete PASSED summary/);
@@ -52,7 +55,7 @@ try {
   await assert.rejects(manager.runUnitTests(sdk, { prgPath: "unused", deviceId: "fenix847mm", timeoutMs: 0 }));
   console.log("PASS runner rejects invalid timeout");
 
-  const prg = path.join(root, "test.prg");
+  const prg = process.platform === "win32" ? fixture : path.join(root, "test.prg");
   await fs.writeFile(prg, "fixture");
 
   // A launcher that exits immediately, even with code 0, is not a launch.
